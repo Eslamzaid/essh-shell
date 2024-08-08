@@ -23,7 +23,7 @@ int main(int args, char *argc[])
         exit(1);
     }
 
-    printf(ANSI_BOLD "*****Hello, there to! " ANSI_GREEN "essh shell*****" ANSI_RESET "\n");
+    //~ printf(ANSI_BOLD "*****Hello, there to! " ANSI_GREEN "essh shell*****" ANSI_RESET "\n");
 
     if (args == 1)
     { // for interactive
