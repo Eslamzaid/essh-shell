@@ -137,9 +137,10 @@ int main(int args, char *argc[])
             }
 
             //* Print the results for debugging
+            
             for (int i = 0; i < index; i++)
             {
-                // printf("Parameter %d: %s\n", i, parameters[i]);
+                printf("Parameter %d: %s\n", i, parameters[i]);
                 free(parameters[i]);
             }
             free(parameters);
