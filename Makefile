@@ -2,5 +2,6 @@
 
 CC = gcc
 CFLAGS = -Wall -Werror 
+LINK_WITH = buildInFunc.c
 all: 
-	$(CC) essh.c -o wish $(CFLAGS)
+	$(CC) essh.c $(LINK_WITH) -o wish $(CFLAGS)
