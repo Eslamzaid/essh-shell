@@ -35,22 +35,31 @@ int main(int args, char *argc[])
             printf("essh> ");
             char *command = NULL;
             size_t size = 0;
-
-            if (getline(&command, &size, stdin) == -1) {
+           
+            if (getline(&command, &size, stdin) != 1) {
                 printf("Couldn't read input\n");
+                printf("Reason: %s, size: %ld", command, size);
+                perror("What happend: ");
                 exit(1);
             }
 
             int len = strlen(command);
-            int counter = 0;
+
+            if(len == 1) {
+                free(command);
+                continue;
+            };
 
             // Count the number of words
+            int counter = 0;
             for (int i = 0; i < len; i++) {
                 if ((command[i] == ' ' && command[i - 1] != ' ') ||
                     (command[i] == '\n' && command[i - 1] != ' ')) {
                     counter++;
                 }
             }
+
+
 
             char **parameters = malloc((counter + 1) * sizeof(char *));
             if (parameters == NULL) {
@@ -59,9 +68,11 @@ int main(int args, char *argc[])
                 exit(0);
             }
 
+
             int word_len = 0;
             int index = 0;
             int start = 0;
+
 
             for (int i = 0; i <= len; i++) {
                 if (!isspace(command[i]) && command[i] != '\0') {

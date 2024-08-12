@@ -2,7 +2,6 @@
 
 CC = gcc
 CFLAGS = -Wall -Werror 
-# LINK_WITH = path.c
-# $(CC) essh.c $(LINK_WITH) -o wish $(CFLAGS)
+LINK_WITH = path.c
 all: 
-	$(CC) essh.c -o wish $(CFLAGS)
+	$(CC) essh.c $(LINK_WITH) -o wish $(CFLAGS)
