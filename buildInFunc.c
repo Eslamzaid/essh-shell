@@ -53,7 +53,11 @@ int get_path(int count, char *path_arr[])
 }
 
 
-// int cd(char* name)
-// {
-
-// }
+void cd(char* name)
+{
+    if(chdir(name) != 0) {
+        perror("Error occurred");
+    } else {
+        printf("Switched to %s\n", name);
+    }
+}

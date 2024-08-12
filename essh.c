@@ -105,7 +105,10 @@ int main(int args, char *argc[])
                 }
                 get_path(index, parameters);
             }
-
+            else if (strcmp(parameters[0], "cd") == 0) {
+                if(index <= 1) printf("Need path");
+                else cd(parameters[1]);
+            }
             else if (index > 0)
             {
                 __pid_t pid = fork();
