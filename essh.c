@@ -1,14 +1,9 @@
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
-#include <ctype.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include "path.h"
+#include "buildInFunc.h"
+#include "essh.h"
 
-void slice(const char *str, char *result, size_t start, size_t end);
 void errorMessage();
 #define ANSI_RESET "\x1b[0m"
 #define ANSI_BOLD "\x1b[1m"
@@ -16,7 +11,9 @@ void errorMessage();
 #define ANSI_RED "\x1b[31m"
 #define ANSI_GREEN "\x1b[32m"
 
+
 char **paths;
+int pthSize = 0;
 
 int main(int args, char *argc[])
 {
@@ -28,24 +25,24 @@ int main(int args, char *argc[])
 
     //~ printf(ANSI_BOLD "*****Hello, there to! " ANSI_GREEN "essh shell*****" ANSI_RESET "\n");
 
-    if (args == 1)    { // for interactive
-        char *path = "/bin/";
+    if (args == 1)
+    { // for interactive
 
-        while (1) {
+        while (1)
+        {
             printf("essh> ");
             char *command = NULL;
             size_t size = 0;
-           
-            if (getline(&command, &size, stdin) != 1) {
+            if (getline(&command, &size, stdin) == -1)
+            {
                 printf("Couldn't read input\n");
-                printf("Reason: %s, size: %ld", command, size);
-                perror("What happend: ");
                 exit(1);
             }
 
             int len = strlen(command);
 
-            if(len == 1) {
+            if (len == 1)
+            {
                 free(command);
                 continue;
             };
@@ -54,12 +51,11 @@ int main(int args, char *argc[])
             int counter = 0;
             for (int i = 0; i < len; i++) {
                 if ((command[i] == ' ' && command[i - 1] != ' ') ||
-                    (command[i] == '\n' && command[i - 1] != ' ')) {
+                    (command[i] == '\n' && command[i - 1] != ' '))
+                {
                     counter++;
                 }
             }
-
-
 
             char **parameters = malloc((counter + 1) * sizeof(char *));
             if (parameters == NULL) {
@@ -68,49 +64,46 @@ int main(int args, char *argc[])
                 exit(0);
             }
 
-
-            int word_len = 0;
-            int index = 0;
-            int start = 0;
-
-
-            for (int i = 0; i <= len; i++) {
-                if (!isspace(command[i]) && command[i] != '\0') {
-                    if (word_len == 0) 
-                        start = i; // Set the start of the word
-                    word_len++;
-                } else {
-                    if (word_len > 0) {
-                        parameters[index] = malloc((word_len + 1) * sizeof(char));
-                        if (parameters[index] == NULL) {
-                            printf("Error inner malloc\n");
-                            //~ errorMessage();
-                            free(parameters);
-                            exit(0);
-                        }
-                        slice(command, parameters[index], start, start + word_len);
-                        parameters[index][word_len] = '\0'; // Null-terminate the string
-                        index++;
-                        word_len = 0;
-                    }
-                }
-            }
+            int index = setStringToArray(len, command, parameters);
 
             parameters[index] = NULL; // Null-terminate the parameters array
 
-            if (strcmp(parameters[0], "exit") == 0) {
+            if (strcmp(parameters[0], "exit") == 0)
+            {
                 printf("Exiting\n");
                 for (int i = 0; i < index; i++)
                     free(parameters[i]);
 
+                for (int i = 0; i < pthSize; i++)
+                    free(paths[i]);
+                
                 free(parameters);
+                if(pthSize != 0) free(paths);
                 free(command);
                 exit(0);
             }
 
-            else if(strcmp(parameters[0], "path") == 0) {
-                printf("Okay this is path!\n");
-                get_path(parameters);
+            else if (strcmp(parameters[0], "path") == 0)
+            {
+                if(pthSize == 0 && index != 1) {
+                    pthSize = index - 1 ;
+                } else {
+                    if(index == 1) {
+                        if(pthSize >= 1) {
+                            for (int i = 0; i < pthSize; i++)
+                                free(paths[i]);
+                            free(paths);
+                            pthSize = 0;
+                            continue;
+                        }
+                        continue;
+                    };
+                    for (int i = 0; i < pthSize; i++)
+                        free(paths[i]);
+                    free(paths);
+                    pthSize = index - 1;
+                }
+                get_path(index, parameters);
             }
 
             else if (index > 0)
@@ -118,19 +111,29 @@ int main(int args, char *argc[])
                 __pid_t pid = fork();
                 if (pid == 0)
                 {
-                    char *full_path = malloc(strlen(parameters[0] + strlen(path) + 1));
-                    strcpy(full_path, path);
-                    strcat(full_path, parameters[0]);
-                    execv(full_path, parameters);
-                    perror("execv failed");
-                    // ~ e errorMessage();
+                    //! will change to adopt many paths, or non
+                    for(int i = 0; i < pthSize; i++) {
+                        char *full_path = malloc(strlen(strlen(paths[i]) + parameters[0] + 1));
+                        if (full_path == NULL) {
+                            perror("malloc failed");
+                            exit(1);
+                        }
+                        strcpy(full_path, paths[i]);
+                        strcat(full_path, parameters[0]);
+                        execv(full_path, parameters);
+                        perror("execv failed with path: ");
+                        // ~ e errorMessage();
+                        free(full_path);
+                    }
                     exit(1);
                 }
-                else if (pid < 0) {
+                else if (pid < 0)
+                {
                     perror("fork failed");
                     // ~ e errorMessage();
                 }
-                else {
+                else
+                {
                     int status;
                     waitpid(pid, &status, 0);
                 }
@@ -139,7 +142,7 @@ int main(int args, char *argc[])
             //* Print the results for debugging
             for (int i = 0; i < index; i++)
             {
-                printf("Parameter %d: %s\n", i, parameters[i]);
+                // printf("Parameter %d: %s\n", i, parameters[i]);
                 free(parameters[i]);
             }
             free(parameters);
@@ -160,8 +163,43 @@ void errorMessage()
     write(STDERR_FILENO, error_message, strlen(error_message));
 }
 
+int setStringToArray(int len, char *command, char **parameters)
+{
+    int word_len = 0;
+    int start = 0;
+    int index = 0;
 
-//TODO: Implement the Path, cd, build-in functions
-//TODO: Implement the redirection
-//TODO: Implement Parellel commands
-//TODO: Change the README description
+    for (int i = 0; i <= len; i++)
+    {
+        if (!isspace(command[i]) && command[i] != '\0')
+        {
+            if (word_len == 0)
+                start = i; // Set the start of the word
+            word_len++;
+        }
+        else
+        {
+            if (word_len > 0)
+            {
+                parameters[index] = malloc((word_len + 1) * sizeof(char));
+                if (parameters[index] == NULL)
+                {
+                    printf("Error inner malloc\n");
+                    //~ errorMessage();
+                    free(parameters);
+                    exit(0);
+                }
+                slice(command, parameters[index], start, start + word_len);
+                parameters[index][word_len] = '\0'; // Null-terminate the string
+                index++;
+                word_len = 0;
+            }
+        }
+    }
+    return index;
+}
+
+// TODO: Implement the Path, cd, build-in functions
+// TODO: Implement the redirection
+// TODO: Implement Parellel commands
+// TODO: Change the README description
