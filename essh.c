@@ -13,7 +13,8 @@ void errorMessage();
 
 
 char **paths;
-int pthSize = 0;
+static int pthSize = 0;
+static int after_Redi = 0;
 
 int main(int args, char *argc[])
 {
@@ -132,6 +133,11 @@ int main(int args, char *argc[])
                 else cd(parameters[1]);
             }
             
+            
+            else if(after_Redi == 1) {
+                printf("Finished parsing now executing!.\n");
+            }
+            
             // Shell commands go here
             else if (index > 0) {
                 __pid_t pid = fork();
@@ -190,8 +196,7 @@ int setStringToArray(int len, char *command, char **parameters)
     int word_len = 0;
     int start = 0;
     int index = 0;
-    // char redir = 0;
-    // char after_Redi = 0;
+    char redir = 0;
 
     for (int i = 0; i <= len; i++)
     {
@@ -202,16 +207,13 @@ int setStringToArray(int len, char *command, char **parameters)
         }
         else {
             if (word_len > 0) {
-                // char buffeer[1];
                 if((command[start] == '>' && command[start+1] == ' ')) {
                     if(index == 0) return -1;
-                    else {
-                        printf(">\n");
-                    }
-                    // slice(command, buffer, start, start + word_len);
-                    // redir = index;
-                    // after_Redi++;
+                    after_Redi = 1;    
                 }
+                else if(after_Redi == 1) {
+                    if(++redir == 2) return -1;
+                };
                 parameters[index] = malloc((word_len + 1) * sizeof(char));
                 if (parameters[index] == NULL) {
                     printf("Error inner malloc\n");
@@ -225,7 +227,8 @@ int setStringToArray(int len, char *command, char **parameters)
                 parameters[index][word_len] = '\0'; // Null-terminate the string
                 index++;
                 word_len = 0;
-                // if(after_Redi > 1) return -1;
+                
+
             }
         }
     }
