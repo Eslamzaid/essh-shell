@@ -202,7 +202,12 @@ int setStringToArray(int len, char *command, char **parameters)
     return index;
 }
 
-// TODO: Implement the Path, cd, build-in functions
+//* TODO: Implement the Path, cd, build-in functions
+// TODO_MINI: implement the default path.
 // TODO: Implement the redirection
 // TODO: Implement Parellel commands
 // TODO: Change the README description
+// & ADDITIONS:
+/**  
+ * Print ecch>{current path name, where are we located}
+ */
