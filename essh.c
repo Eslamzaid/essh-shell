@@ -25,36 +25,43 @@ int main(int args, char *argc[])
 
     //~ printf(ANSI_BOLD "*****Hello, there to! " ANSI_GREEN "essh shell*****" ANSI_RESET "\n");
 
-    if (args == 1)
-    { // for interactive
+    if (args == 1) { // for interactive
 
-        while (1)
-        {
+        while (1) {
             printf("essh> ");
             char *command = NULL;
             size_t size = 0;
-            if (getline(&command, &size, stdin) == -1)
-            {
+            if (getline(&command, &size, stdin) == -1) {
                 printf("Couldn't read input\n");
                 exit(1);
             }
 
             int len = strlen(command);
 
-            if (len == 1)
-            {
+            if (len == 1) {
                 free(command);
                 continue;
             };
 
-            // Count the number of words
+            // Count the number of words && ! place for performance improvement (mixing it with setStringToArray if possible) 
             int counter = 0;
+            char letter_found = 0;
             for (int i = 0; i < len; i++) {
                 if ((command[i] == ' ' && command[i - 1] != ' ') ||
                     (command[i] == '\n' && command[i - 1] != ' '))
-                {
                     counter++;
+            }
+            for(int i = 0; i < len-1; i++) {
+                if(command[i] != ' ') {
+                    letter_found = 1;
+                    break;
                 }
+            }
+            
+            if(letter_found == 0) {
+                free(command);
+                printf("Enter a command\n");
+                continue;
             }
 
             char **parameters = malloc((counter + 1) * sizeof(char *));
@@ -65,9 +72,21 @@ int main(int args, char *argc[])
             }
 
             int index = setStringToArray(len, command, parameters);
+            if(index == -1) {
+                printf("Command not supported.\n");
+                for (int i = 0; i < index; i++) {
+                    free(parameters[i]);
+                }
+                free(parameters);
+                free(command);
+                continue;
+            }
 
+            
             parameters[index] = NULL; // Null-terminate the parameters array
 
+
+            // exit commands
             if (strcmp(parameters[0], "exit") == 0)
             {
                 printf("Exiting\n");
@@ -83,6 +102,7 @@ int main(int args, char *argc[])
                 exit(0);
             }
 
+            // setting path command
             else if (strcmp(parameters[0], "path") == 0)
             {
                 if(pthSize == 0 && index != 1) {
@@ -105,15 +125,17 @@ int main(int args, char *argc[])
                 }
                 get_path(index, parameters);
             }
+            
+            // cd command
             else if (strcmp(parameters[0], "cd") == 0) {
-                if(index <= 1) printf("Need path");
+                if(index <= 1) printf("Need path\n");
                 else cd(parameters[1]);
             }
-            else if (index > 0)
-            {
+            
+            // Shell commands go here
+            else if (index > 0) {
                 __pid_t pid = fork();
-                if (pid == 0)
-                {
+                if (pid == 0) {
                     //! will change to adopt many paths, or non
                     for(int i = 0; i < pthSize; i++) {
                         char *full_path = malloc(strlen(strlen(paths[i]) + parameters[0] + 1));
@@ -130,21 +152,18 @@ int main(int args, char *argc[])
                     }
                     exit(1);
                 }
-                else if (pid < 0)
-                {
+                else if (pid < 0) {
                     perror("fork failed");
                     // ~ e errorMessage();
                 }
-                else
-                {
+                else {
                     int status;
                     waitpid(pid, &status, 0);
                 }
             }
 
             //* Print the results for debugging
-            for (int i = 0; i < index; i++)
-            {
+            for (int i = 0; i < index; i++) {
                 // printf("Parameter %d: %s\n", i, parameters[i]);
                 free(parameters[i]);
             }
@@ -171,31 +190,42 @@ int setStringToArray(int len, char *command, char **parameters)
     int word_len = 0;
     int start = 0;
     int index = 0;
+    // char redir = 0;
+    // char after_Redi = 0;
 
     for (int i = 0; i <= len; i++)
     {
-        if (!isspace(command[i]) && command[i] != '\0')
-        {
+        if (!isspace(command[i]) && command[i] != '\0') {
             if (word_len == 0)
                 start = i; // Set the start of the word
             word_len++;
         }
-        else
-        {
-            if (word_len > 0)
-            {
+        else {
+            if (word_len > 0) {
+                // char buffeer[1];
+                if((command[start] == '>' && command[start+1] == ' ')) {
+                    if(index == 0) return -1;
+                    else {
+                        printf(">\n");
+                    }
+                    // slice(command, buffer, start, start + word_len);
+                    // redir = index;
+                    // after_Redi++;
+                }
                 parameters[index] = malloc((word_len + 1) * sizeof(char));
-                if (parameters[index] == NULL)
-                {
+                if (parameters[index] == NULL) {
                     printf("Error inner malloc\n");
                     //~ errorMessage();
+                    for(int i = 0; i < index; i++) free(parameters[i]);
                     free(parameters);
                     exit(0);
                 }
+                
                 slice(command, parameters[index], start, start + word_len);
                 parameters[index][word_len] = '\0'; // Null-terminate the string
                 index++;
                 word_len = 0;
+                // if(after_Redi > 1) return -1;
             }
         }
     }
@@ -203,7 +233,7 @@ int setStringToArray(int len, char *command, char **parameters)
 }
 
 //* TODO: Implement the Path, cd, build-in functions
-// TODO_MINI: implement the default path.
+//@ TODO_MINI: implement the default path.
 // TODO: Implement the redirection
 // TODO: Implement Parellel commands
 // TODO: Change the README description
