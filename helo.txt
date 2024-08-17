@@ -1,0 +1,12 @@
+buildInFunc.c
+buildInFunc.h
+essh.c
+essh.h
+helo.txt
+Makefile
+README.md
+tests
+tests-out
+test-wish.sh
+wc
+wish
