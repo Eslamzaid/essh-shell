@@ -253,9 +253,6 @@ int setStringToArray(int len, char *command, char **parameters)
         else
         {
             if (word_len > 0) {
-                if(command[start] == '&') {
-                    
-                }
                 if ((command[start] == '>' && command[start + 1] == ' '))
                 {
                     if (index == 0)
