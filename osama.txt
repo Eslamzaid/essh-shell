@@ -1,0 +1,9 @@
+buildInFunc.c
+buildInFunc.h
+essh.c
+essh.h
+helo.txt
+Makefile
+osama.txt
+README.md
+wish

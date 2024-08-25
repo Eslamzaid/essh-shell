@@ -47,7 +47,7 @@ int main(int args, char *argc[]) {
                 continue;
             };
 
-            // Count the number of words && ! place for performance improvement (mixing it with setStringToArray if possible)
+            // Count the number of words && ! place for performance improvement (mixing it with parserString if possible)
             int counter = 0;
             char letter_found = 0;
             for (int i = 0; i < len; i++){
@@ -78,9 +78,8 @@ int main(int args, char *argc[]) {
                 exit(0);
             }
 
-            int index = setStringToArray(len, command, parameters);
-            if (index == -1)
-            {
+            int index = parserString(len, command, parameters);
+            if (index == -1) {
                 printf("Command not supported.\n");
                 for (int i = 0; i < index; i++)
                 {
@@ -92,6 +91,7 @@ int main(int args, char *argc[]) {
             }
 
             parameters[index] = NULL; // Null-terminate the parameters array
+
             // exit commands
             if (strcmp(parameters[0], "exit") == 0)
             {
@@ -147,10 +147,11 @@ int main(int args, char *argc[]) {
             else if (index > 0) {
                  __pid_t pid = fork();
                 if (pid == 0) {
+                    char *full_path_mod = NULL;
+                    char **sliced_arr = NULL;
                     for (int i = 0; i < pthSize; i++) {
                         char *full_path = malloc(strlen(strlen(paths[i]) + parameters[0] + 1));
-                        if (full_path == NULL)
-                        {
+                        if (full_path == NULL)  {
                             perror("malloc failed");
                             exit(1);
                         }
@@ -188,44 +189,71 @@ int main(int args, char *argc[]) {
                                 pid_t pd = fork();
                                 if(pd == 0) {
                                     // Child process
-                                    char **sliced_arr;
                                     if(k == 0) {
-                                        // First process
                                         sliced_arr = malloc(sizeof(char*) * (parrell_commands_index[0] + 1));
-                                        for(int j = 0; j < parrell_commands_index[0]; j++) {
+                                        for(int j = 0; j < parrell_commands_index[0]; j++) 
                                             sliced_arr[j] = parameters[j];
-                                        }
+
                                         sliced_arr[parrell_commands_index[0]] = NULL; // Null-terminate the array
                                         execv(full_path, sliced_arr);
                                         perror("execv");
-                                    } else if(k == parrell_flag){
-                                        // Middle or subsequent processes
-                                        int slice_size = ((index-1) - (parrell_commands_index[k-1]+1) + 1);
-                                        sliced_arr = malloc(sizeof(char*) * slice_size);
-
-                                        for(int h = 0, j = parrell_commands_index[k-1]+1; j <= index-1; j++, h++) {
-                                            sliced_arr[h] = parameters[j];
+                                    } else if(k == parrell_flag) {
+                                        int slice_size = (index - 1) - (parrell_commands_index[k - 1] + 1) + 1;
+                                        sliced_arr = malloc(sizeof(char*) * (slice_size + 1));
+                                        if (sliced_arr == NULL) {
+                                            perror("malloc failed");
+                                            exit(1);
                                         }
 
+                                        for (int h = 0, j = parrell_commands_index[k - 1] + 1; j <= index - 1; j++, h++) {
+                                            sliced_arr[h] = parameters[j];
+                                            printf("@@@@%s\n", sliced_arr[h]);
+                                        }
                                         sliced_arr[slice_size] = NULL; // Null-terminate the array
 
-                                        char *full_path_mod = malloc(strlen(paths[i]) + strlen(sliced_arr[0]) + 1);
+                                        full_path_mod = malloc(strlen(paths[i]) + strlen(sliced_arr[0]) + 1);
+                                        if (full_path_mod == NULL) {
+                                            perror("malloc failed");
+                                            free(sliced_arr);
+                                            exit(1);
+                                        }
 
+                                        strcpy(full_path_mod, paths[i]);
+                                        strcat(full_path_mod, sliced_arr[0]);
+
+                                        execv(full_path_mod, sliced_arr);
+                                        perror("execv");
+                                    } else {
+                                        int total_size = ((parrell_commands_index[k]-1) - parrell_commands_index[k-1] + 1) - 1;
+                                        sliced_arr = malloc(sizeof(char*) * total_size + 1);
+                                        if (sliced_arr == NULL) {
+                                            printf("Malloc failed\n");
+                                            exit(0);
+                                        }
+                                        for(int h = 0, j = parrell_commands_index[k-1]+1; h < total_size; j++, h++) {
+                                            sliced_arr[h] = parameters[j];
+                                        }
+                                        sliced_arr[total_size] = NULL; // Null-terminate the array
+
+                                        char *full_path_mod = malloc(strlen(paths[i]) + strlen(sliced_arr[0]) + 1);
                                         if (full_path_mod == NULL) {
                                             perror("malloc failed");
                                             exit(1);
                                         }
+
                                         strcpy(full_path_mod, paths[i]);
                                         strcat(full_path_mod, sliced_arr[0]);
-                                        printf("%s\n", full_path_mod);
                                         execv(full_path_mod, sliced_arr);
                                         perror("execv");
                                     }
                                     exit(0);
                                 } else if(pd < 0) {
-                                    // Error handling for fork failure
                                     perror("fork");
                                     exit(1);
+                                } else {
+                                    pid_t wpid;
+                                    int status;
+                                    while ((wpid = wait(&status)) > 0);
                                 }
                             }
                             // Parent process continues to next iteration or waits for children
@@ -250,9 +278,7 @@ int main(int args, char *argc[]) {
                     waitpid(pid, &status, 0);
                 }
             }
-
-            //* Print the results for debugging
-            
+        
             for (int i = 0; i < index; i++) {
                 free(parameters[i]);
             }
@@ -275,7 +301,7 @@ void errorMessage()
     write(STDERR_FILENO, error_message, strlen(error_message));
 }
 
-int setStringToArray(int len, char *command, char **parameters)
+int parserString(int len, char *command, char **parameters)
 {
     int word_len = 0;
     int start = 0;
@@ -297,14 +323,10 @@ int setStringToArray(int len, char *command, char **parameters)
         else
         {
             if (word_len > 0) {
-                if (parrell_check_flag == 1) {
-                    parrell_check_flag = 0;       
-                } 
-                // Handling parelled commadns
                 if(command[start] == '&' && command[start + 1] == ' ') { 
                     if (index == 0)
                         return -1;
-                    if(parrell_check_flag >= 1) {
+                    if(parrell_flag >= 1) {
                         parrell_flag++;
                         parrell_commands_index = realloc(parrell_commands_index, sizeof(int) * parrell_flag);
                         if(parrell_commands_index == NULL) return -1;
@@ -317,7 +339,6 @@ int setStringToArray(int len, char *command, char **parameters)
                         parrell_commands_index[parrell_flag-1] = index;
                     }
                 }
-                // Handling redirection, should be modified
                 if ((command[start] == '>' && command[start + 1] == ' ')) {
                     if (index == 0)
                         return -1;
@@ -351,10 +372,8 @@ int setStringToArray(int len, char *command, char **parameters)
     }
 
     if(index > 0 && strlen(parameters[0]) == 1) return -1; 
+    if(parrell_check_flag == 1) if(parrell_commands_index[parrell_flag -1] == index - 1 ) return -1;
 
-    if(parrell_check_flag == 1) return -1;
-
-    printf("%d\n", parrell_flag);
     redir = index - 2;
 
     return index;
@@ -365,8 +384,8 @@ int setStringToArray(int len, char *command, char **parameters)
 
 //* TODO: Implement the Path, cd, build-in functions
 //* TODO: Implement the redirection
+//* TODO: Implement Parallel commands
 //@ TODO_MINI: implement the default path.
-// TODO: Implement Parallel commands
 // TODO: Refactor code
 // TODO: Change the README description
 // & ADDITIONS:

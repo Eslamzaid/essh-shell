@@ -4,5 +4,5 @@
 #include <ctype.h>
 #include <unistd.h>
 
-int setStringToArray(int len, char *command, char **parameters);
+int parserString(int len, char *command, char **parameters);
 void slice(const char *str, char *result, size_t start, size_t end);
