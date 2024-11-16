@@ -4,6 +4,6 @@ essh.c
 essh.h
 helo.txt
 Makefile
-osama.txt
+eslam.txt
 README.md
 wish
